@@ -1,7 +1,7 @@
 {
-  "name": "rest-area-inspection-lab",
+  "name": "bim-review-dashboard",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -12,9 +12,7 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.58.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@supabase/supabase-js": "^2.58.0"
   },
   "devDependencies": {
     "vite": "^7.2.0"

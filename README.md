@@ -1,115 +1,99 @@
-# 12강 공통 실습 프로젝트 — 휴게소 시설점검 현황판
+# BIM 용역 월간 검토 현황 대시보드
 
-이 프로젝트는 **GitHub → Vercel → 자동 재배포 → Supabase DB 연결 → 최종 검증**을 모든 수강생이 실습하도록 만든 React + Vite 예제입니다.
+BIM 용역 월간 실적보고서 **적정성 검토 결과**(AI 판정 초안)를 4개 공구 × 과업 항목으로 한눈에 보는 대시보드입니다.
+휴게소 시설점검 실습과 같은 흐름(**GitHub → Vercel 자동 배포 → Supabase DB 연결 → DB 수정 후 확인**)을 업무 자동화 결과물에 적용했습니다.
 
-> **교육용 가상 데이터**만 사용합니다. 실제 한국도로공사 자료나 개인정보가 아닙니다. 웹앱에는 로그인·저장·수정 기능이 없습니다.
+> ⚠ **교육용 가상 데이터만 사용합니다.** 이 저장소와 배포 사이트는 **누구나 볼 수 있습니다.**
+> 실제 과업지시서, 월간 실적보고서, 용역사 검토 결과, 사람 이름·연락처를 이 저장소나 Supabase에 넣지 마세요.
 
-## 1. 프로젝트 실행 (DB 없이 가능)
+## 화면 구성
 
-**준비물:** Node.js 20.19 이상(권장 22 LTS), 인터넷 연결
+| 영역 | 내용 |
+| --- | --- |
+| 요약 | 검토한 공구 수, 미흡·확인 필요·이행 건수, 보완 요청 항목 수, 경고 |
+| 공구별 판정 분포 | 공구마다 판정 5단계 비율 (표로 보기 가능) |
+| 검토 진행 단계 | 보고서 접수 → AI 초안 → 판정 확정 → 보완 요청 → 기성 의견 |
+| 미흡 항목 / 확인 필요 원인 | 미흡 판정 목록, 확인 필요의 원인(기준 미확정·보고서에서 못 찾음·과업 범위 확인) |
+| 공구 × 과업 비교표 | 판정 필터, 칸에 마우스를 올리면 이유, 누르면 상세 |
+| 보완 요청 · 우선 과업 · 메모 | 공구별 결과물 초안 |
+
+판정 5단계: **이행 / 미흡 / 보고서에 없음 / 확인 필요 / 해당 시기 아님**
+
+## 1. 로컬 실행 (DB 없이 가능)
+
+**준비물:** Node.js 20.19 이상
 
 ```bash
 npm install
 npm run dev
 ```
 
-브라우저에서 터미널에 표시된 `http://127.0.0.1:5173/`에 접속하세요.
+`http://127.0.0.1:5173/` 에 접속합니다. 환경변수가 없으면 `public/data.json`(가상 데이터)을 읽고 오른쪽 위에 **DEMO DATA**가 표시됩니다.
 
-DB 연결 전에는 **5건의 가상 데이터**가 자동 표시됩니다. 이름 검색, 상태 필터, 상태별 통계를 사용할 수 있습니다.
+> Windows PowerShell에서 `npm`이 "스크립트를 실행할 수 없습니다" 오류로 막히면 `npm.cmd`, `npx.cmd`로 실행하세요.
 
-## 2. GitHub에 저장하고 Vercel 배포
+## 2. Supabase DB 만들기
 
-1. 새 GitHub 저장소를 생성합니다. 프로젝트 **안에 있는 파일**을 업로드합니다(상위 폴더가 한 번 더 들어가지 않도록 주의).
-2. `.env.local`, `node_modules/`, `dist/`는 **업로드하지 않습니다.** `.env.example`은 올려도 됩니다.
-3. Vercel에 로그인하고 `Add New → Project`에서 해당 GitHub 저장소를 Import합니다.
-4. 설정을 확인합니다: **Framework = Vite**, **Build Command = `npm run build`**, **Output Directory = `dist`**.
-5. 첫 배포 후 `https://프로젝트명.vercel.app`에서 가상 데이터가 보이는지 확인합니다.
+1. Supabase Dashboard → **SQL Editor**에서 [`supabase/setup.sql`](supabase/setup.sql) 전체를 붙여 넣고 **Run** 합니다.
+2. 결과 창에 공구 4곳이 각각 **판정 27건**으로 나오면 성공입니다.
+3. 만들어지는 테이블 (모두 조회 전용 RLS 정책 `lab_public_read_only` 적용)
 
-**자동 재배포 실습:** `src/App.jsx`에서 화면 제목 `휴게소 시설점검`을 `우리 팀 시설점검`으로 수정하고 GitHub에 커밋·푸시합니다. Vercel이 새 배포를 시작하는지 확인합니다.
+| 테이블 | 내용 |
+| --- | --- |
+| `bim_criteria` | 공통 과업 기준표 (항목 ID, 구분, 과업 항목, 검토주기, 근거) |
+| `bim_review_months` | 실적월, 검토일, 비고 |
+| `bim_review_groups` | 공구별 진행 단계(`stage` 0~4), 경고, 보완 요청, 우선 과업, 메모 |
+| `bim_verdicts` | 공구 × 과업 판정, 근거, 이유, 확인 필요 원인 |
 
-## 3. Supabase DB 프로젝트 생성 (전원 필수)
+> SQL을 다시 실행해도 Table Editor에서 직접 고친 값은 덮어쓰지 않습니다.
 
-1. https://supabase.com 에 로그인하고 **새 프로젝트**를 생성합니다. 이 과정에서 클라우드 PostgreSQL DB가 준비됩니다. 로컬에 PostgreSQL을 설치하지 않습니다.
-2. Supabase Dashboard → **SQL Editor**를 엽니다.
-3. 이 프로젝트의 **`supabase/setup.sql`을 전부 복사해서 실행**합니다.
-4. `public.rest_area_inspections`에 **가상 행 5건**이 생성되었는지 확인합니다.
-5. 읽기 전용 RLS 정책 `lab_public_read_only`가 활성화되어 있는지 확인합니다. 누구나 조회할 수 있으므로 실제 업무 데이터를 넣지 않습니다.
+## 3. 환경변수 연결
 
-## 4. 로컬 React 앱과 Supabase 연결 (배포 실패 수강생도 가능)
-
-1. `.env.example` 파일을 복사하여 **`.env.local`**로 만듭니다.
-2. Supabase Dashboard의 **Connect** 또는 **Project Settings → API Keys**에서 **Project URL**과 **Publishable key**를 확인합니다.
-3. `.env.local`에 값을 넣습니다.
+`.env.example`을 복사해 `.env.local`을 만들고 값을 넣은 뒤 개발 서버를 **다시 시작**합니다.
 
 ```dotenv
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-4. 기존 개발 서버를 종료한 뒤 `npm run dev`로 **재시작**합니다. 환경변수는 Vite 서버 시작 시 읽습니다.
-5. 화면의 파란 알림이 **"Supabase 클라우드 DB 연결됨 / LIVE DB"**로 바뀌었는지 확인합니다.
+Vercel에는 **Settings → Environment Variables**에 같은 두 값을 **Config** 형식, **Production**으로 등록하고 Redeploy 합니다.
+화면 오른쪽 위가 **LIVE DB**로 바뀌면 연결된 것입니다.
 
-> `.env.local`의 키는 **Publishable key**(구형 프로젝트의 anon key도 지원)만 사용합니다. `service_role`, `sb_secret_` 등 관리자·비밀 키를 넣지 마세요. 공개용 키도 SQL의 RLS 정책 없이 안전한 것은 아닙니다.
+> Publishable key만 사용합니다. `sb_secret_`, `service_role` 키는 절대 넣지 마세요.
 
-## 5. 배포된 Vercel 앱과 Supabase 연결 (배포 성공 수강생)
+## 4. 최종 검증 (DB 수정 → 화면 반영)
 
-1. Vercel 프로젝트 → **Settings → Environment Variables**에서 다음 두 항목을 **Production**에 등록합니다.
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY`
-2. 값을 입력한 후 **Redeploy**를 실행합니다. `VITE_` 환경변수는 빌드에 포함되므로 이전 배포에 자동 반영되지 않습니다.
-3. 배포 URL을 새로고침해 **LIVE DB** 표기를 확인합니다.
+1. Supabase → Table Editor → `bim_review_groups`에서 **1공구**의 `stage`를 `1` → **`2`**(판정 확정)로 바꿉니다.
+2. Table Editor → `bim_verdicts`에서 **2공구 · T-11**의 `verdict`를 `미흡` → **`이행`**으로 바꿉니다.
+3. 대시보드에서 **데이터 새로고침**을 누릅니다.
+4. 1공구 진행 단계가 **판정 확정**까지 채워지고, 미흡 **9 → 8**, 이행 **48 → 49**가 되면 성공입니다.
 
-이 예제는 DB 연결 코드가 처음부터 포함되어 있습니다. 따라서 DB 설정 시 **코드를 따로 수정할 필요 없이 환경변수만 추가**하면 됩니다.
+## 5. 새 실적월 데이터 넣기 (가상 데이터)
 
-## 6. 최종 검증 (전원 필수)
+`bim-monthly-review` 스킬이 만든 검토 JSON과 기준표 엑셀로 `data.json`을 갱신한 뒤 SQL을 다시 만듭니다.
 
-1. Supabase → Table Editor → `public.rest_area_inspections`를 엽니다.
-2. `영동 B휴게소`의 `status`를 `점검 필요`에서 **`정상`**으로 수정합니다. 대시보드에서만 직접 수정하세요(웹앱은 조회 전용).
-3. **로컬 또는 Vercel 웹앱**에서 `데이터 새로고침` 버튼을 누릅니다.
-4. 영동 B휴게소의 상태가 **정상**으로 바뀌고, 상태별 통계가 **정상 3→4건 / 점검 필요 1→0건**으로 바뀌면 성공입니다.
+```bash
+python tools/build_dashboard_data.py <검토.json> <기준표.xlsx> public/data.json --append
+python tools/make_setup_sql.py public/data.json supabase/setup.sql
+```
 
-| 확인 항목 | 성공 기준 |
+새로 만든 `setup.sql`을 SQL Editor에서 다시 실행하면 새 실적월이 추가됩니다.
+
+## 문제 해결
+
+| 증상 | 확인할 것 |
 | --- | --- |
-| DB 미연결 | `DEMO DATA`, 가상 데이터 5건 |
-| DB 연결 | `LIVE DB`, DB 데이터 5건 |
-| Supabase 테이블 | 5건이 존재, RLS 조회 정책 존재 |
-| DB 데이터 변경 | 새로고침 후 화면과 상태별 통계 변경 |
-| DB 조회 실패 | 오류 표시, 가상 데이터로 **조용히 대체하지 않음** |
+| `조회 오류` + `PGRST205` / `relation does not exist` | `supabase/setup.sql`을 올바른 프로젝트에서 실행했는지 |
+| `permission denied` / `42501` | RLS 조회 정책 `lab_public_read_only`가 있는지 |
+| 계속 `DEMO DATA` | `.env.local` 두 값을 모두 넣었는지, 개발 서버를 재시작했는지. Vercel은 등록 후 Redeploy |
+| `Failed to fetch` | URL 오타, 네트워크·방화벽 |
+| 판정 칸이 `!`로 보임 | `verdict` 값이 5단계 이름과 정확히 같은지 (띄어쓰기 포함) |
 
-## 7. 문제 해결
-
-- `npm` 명령을 찾을 수 없음: Node.js 설치·PATH 확인.
-- 빈 화면: 브라우저 개발자 도구와 터미널 오류 확인. `npm install` 및 `npm run build` 재시도.
-- Supabase `permission denied` / `42501`: SQL 권한과 RLS 조회 정책 확인.
-- Supabase `relation does not exist` / `42P01`: `supabase/setup.sql`이 올바른 프로젝트에 실행되었는지 확인.
-- `Failed to fetch`: URL, 연결 상태, 방화벽·네트워크 정책 확인.
-- 웹앱에 `DEMO DATA`가 계속 보임: `.env.local`의 **두 값 모두** 설정했는지 확인하고 Vite 서버를 재시작. Vercel은 환경변수 등록 후 **Redeploy**.
-- `LIVE DB`인데 테이블에 데이터가 없음: 올바른 Supabase 프로젝트의 테이블을 확인.
-
-## 8. 강의용 프롬프트
-
-**GitHub → Vercel:**
-
-> 이 React + Vite 프로젝트를 GitHub에 저장한 뒤 Vercel에 배포해줘. 네가 할 수 있는 일은 직접 진행하고, 내가 해야 하는 일은 하나씩 안내해줘. 업로드나 배포 전에 내 확인을 받아줘.
-
-**Supabase 연결:**
-
-> 이 프로젝트의 `supabase/setup.sql`을 이용해 실습용 Supabase DB를 만들고 연결해줘. 로컬 앱과 Vercel 앱 중 가능한 쪽에서 데이터를 읽게 해줘. 내가 직접 해야 하는 로그인·승인·키 설정은 안내해줘. 실제 데이터 대신 가상 데이터만 사용해줘.
-
-**검증:**
-
-> Supabase에서 가상 데이터 한 건을 수정했어. 웹앱을 새로고침해서 상태와 통계가 바뀌었는지 확인해줘. 정확한 결과와 오류가 있으면 알려줘.
+DB 조회가 실패하면 가상 데이터를 대신 보여 주지 않고 **오류를 그대로 표시**합니다.
 
 ---
 
 ### 사용 기술
-
-- React 19, Vite 7, `@supabase/supabase-js` 2
-- 프론트엔드 전용 정적 웹앱(Vercel에서 서버·DB 설치 불필요)
-- Supabase PostgreSQL(클라우드 DB), 익명 읽기 전용 접근 정책
-
-### 참고 문서
-
-- [Supabase React 시작하기](https://supabase.com/docs/guides/getting-started/quickstarts/reactjs)
-- [Vercel Vite 배포 가이드](https://vercel.com/docs/frameworks/frontend/vite)
-- [Vercel Git 연동](https://vercel.com/docs/git)
+- Vite 7, 순수 JavaScript, `@supabase/supabase-js` 2
+- Supabase PostgreSQL (익명 조회 전용 RLS)
+- Vercel (GitHub `main` 브랜치 push 시 자동 배포)
