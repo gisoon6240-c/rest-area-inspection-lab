@@ -74,6 +74,11 @@ button:focus-visible, select:focus-visible, .cell:focus-visible { outline: 2px s
 .source { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; border-radius: 999px; padding: 4px 10px; border: 1px solid var(--border); color: var(--ink-2); background: var(--surface-2); }
 .source.live { color: var(--on-good); background: var(--good); border-color: var(--good); }
 .source.error { color: var(--on-critical); background: var(--critical); border-color: var(--critical); }
+.groupbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.groupbar .lbl { font-size: 12.5px; color: var(--ink-2); margin-right: 2px; }
+.groupbar button { min-width: 64px; font-weight: 600; padding: 8px 14px; border-radius: 10px; }
+.groupbar button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.groupbar .hint { font-size: 12px; color: var(--muted); flex-basis: 100%; }
 .banner {
   background: var(--banner); color: var(--banner-ink); border-radius: 10px;
   padding: 10px 14px; margin-bottom: 16px; font-size: 13px;
@@ -102,6 +107,29 @@ button:focus-visible, select:focus-visible, .cell:focus-visible { outline: 2px s
 .v-없음 { background: var(--absent); color: var(--on-absent); }
 .v-확인 { background: var(--warning); color: var(--on-warning); }
 .v-해당 { background: var(--na); color: var(--on-na); }
+.v-일정 { background: var(--accent); color: #fff; }
+
+/* 다음 분기 과업 */
+.plan-section { margin-bottom: 16px; }
+.sample-tag { font-size: 11.5px; font-weight: 700; color: var(--banner-ink); background: var(--banner); border-radius: 999px; padding: 3px 10px; }
+.plan-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); }
+.plan-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface-2); min-width: 0; }
+.plan-card h3 { margin: 0 0 2px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.plan-card h3 .n { font-size: 12px; font-weight: 400; color: var(--ink-2); }
+.plan-card .counts { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 8px; }
+.plan-card .counts span { font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 6px; }
+.plan-card ul { list-style: none; margin: 0; padding: 0; }
+.plan-card li { display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--grid); font-size: 12.5px; }
+.plan-card li:first-child { border-top: 0; }
+.plan-card .tag { font-size: 10.5px; font-weight: 700; border-radius: 4px; text-align: center; padding: 2px 0; height: fit-content; }
+.plan-card .what { font-weight: 600; }
+.plan-card .what .id { color: var(--muted); font-weight: 400; margin-right: 4px; font-variant-numeric: tabular-nums; }
+.plan-card .act { color: var(--ink-2); }
+.plan-card .foot { color: var(--muted); font-size: 11.5px; margin-top: 8px; }
+.plan-rules { margin-top: 12px; font-size: 12.5px; }
+.plan-rules summary { cursor: pointer; color: var(--ink-2); font-weight: 600; }
+.plan-rules ol { margin: 8px 0; padding-left: 20px; }
+.plan-rules li { margin: 4px 0; }
 
 /* segmented bars */
 .seg-row { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; margin: 10px 0; }
@@ -208,7 +236,25 @@ footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
   <div class="banner" id="banner" hidden>⚠ <b>교육용 가상 데이터</b>입니다. 실제 과업지시서·보고서·용역사 자료가 아니며, 스킬 시험 결과를 표시합니다.</div>
   <div class="banner error" id="error" hidden></div>
 
+  <nav class="groupbar" id="groupbar" aria-label="공구 선택" hidden></nav>
+
   <section class="grid tiles" id="tiles" aria-label="요약"></section>
+
+  <section class="card plan-section" aria-labelledby="planTitle">
+    <div class="card-head">
+      <div>
+        <h2 id="planTitle">다음 분기 추진 BIM 과업</h2>
+        <p class="cap" id="planCap">공구별로 다음 분기에 추진할 과업 (가상 기준 적용)</p>
+      </div>
+      <span class="sample-tag">가상 기준</span>
+    </div>
+    <div class="plan-grid" id="plan"></div>
+    <details class="plan-rules">
+      <summary>적용한 가상 기준 보기</summary>
+      <ol id="planRules"></ol>
+      <p class="cap">⚠ 교육용으로 정한 가상 기준입니다. 실제 과업지시서·본사 지침의 기준이 아니며, 판정을 바꾸면 목록이 다시 계산됩니다.</p>
+    </details>
+  </section>
 
   <section class="grid two">
     <div class="card">
@@ -242,7 +288,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
       <div class="card-head">
         <div>
           <h2>확인 필요 원인</h2>
-          <p class="cap">무엇을 정해야 풀리는지 (4개 공구 합계)</p>
+          <p class="cap" id="causesCap">무엇을 정해야 풀리는지 (4개 공구 합계)</p>
         </div>
       </div>
       <div id="causes"></div>
